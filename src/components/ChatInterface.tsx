@@ -14,6 +14,7 @@ interface ChatInterfaceProps {
     messages: Message[];
     onConfirmPrompt: () => void;
     onRegeneratePrompt: () => void;
+    onSendMessage: (message: string) => void;
     isGenerating: boolean;
 }
 
@@ -21,9 +22,11 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     messages,
     onConfirmPrompt,
     onRegeneratePrompt,
+    onSendMessage,
     isGenerating
 }) => {
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const [inputValue, setInputValue] = React.useState("");
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -33,8 +36,16 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         scrollToBottom();
     }, [messages]);
 
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (inputValue.trim() && !isGenerating) {
+            onSendMessage(inputValue.trim());
+            setInputValue("");
+        }
+    };
+
     return (
-        <div className="flex flex-col h-[500px] w-full max-w-2xl bg-neutral-900/50 rounded-2xl border border-neutral-800 overflow-hidden">
+        <div className="flex flex-col h-[600px] w-full max-w-2xl bg-neutral-900/50 rounded-2xl border border-neutral-800 overflow-hidden">
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 <AnimatePresence initial={false}>
                     {messages.map((message) => (
@@ -92,6 +103,26 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 </AnimatePresence>
                 <div ref={messagesEndRef} />
             </div>
+
+            <form onSubmit={handleSubmit} className="p-4 border-t border-neutral-800 bg-neutral-900/30">
+                <div className="relative flex items-center">
+                    <input
+                        type="text"
+                        value={inputValue}
+                        onChange={(e) => setInputValue(e.target.value)}
+                        placeholder="Describe your intent or refine the prompt..."
+                        disabled={isGenerating}
+                        className="w-full bg-neutral-800 text-neutral-200 placeholder-neutral-500 rounded-xl py-3 pl-4 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400/50 border border-transparent focus:border-yellow-400/50 transition-all"
+                    />
+                    <button
+                        type="submit"
+                        disabled={!inputValue.trim() || isGenerating}
+                        className="absolute right-2 p-1.5 bg-yellow-400 text-black rounded-lg hover:bg-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                        <User className="w-4 h-4" />
+                    </button>
+                </div>
+            </form>
         </div>
     );
 };
