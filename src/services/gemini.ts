@@ -10,9 +10,9 @@ export const analyzeDocument = async (file: File): Promise<GeminiResponse> => {
 
     console.log("Analyzing file:", file.name);
 
-    // Mock response based on file name or random
+    // Mock response based on file name
     return {
-        prompt: `A futuristic city with glowing neon lights, inspired by the contents of ${file.name}. The style is cyberpunk with a touch of noir. High resolution, 8k.`,
+        prompt: `**Concept:** A compelling marketing visual derived from ${file.name}.\n**Key Message:** Highlighting core value propositions and brand identity.\n**Composition:** Dynamic commercial layout, rule of thirds, clear focal point for product or message.\n**Style:** Premium advertising aesthetic, on-brand color palette, high-fidelity textures, persuasive visual hierarchy.\n**Lighting:** Studio-quality commercial lighting, emphasizing depth and quality.\n**Context:** Suitable for high-impact digital campaigns and print media.`,
     };
 };
 
@@ -20,17 +20,63 @@ export const generateImage = async (prompt: string, settings?: GenerationSetting
     const apiKey = import.meta.env.VITE_NANO_BANANA_PRO_API_KEY;
 
     if (!apiKey) {
-        console.warn("VITE_NANO_BANANA_PRO_API_KEY is missing!");
+        console.error("VITE_NANO_BANANA_PRO_API_KEY is missing!");
+        throw new Error("API key is missing");
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 3000));
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/nano-banana-pro-preview:generateContent?key=${apiKey}`;
 
-    console.log("Generating image with:", {
-        prompt,
-        settings,
-        apiKey: apiKey ? "PRESENT" : "MISSING"
-    });
+    // Construct the prompt with settings if available
+    // Enforce professional quality standards
+    const qualityKeywords = "professional, enterprise-grade, marketing department quality, high-end, polished, sophisticated, 8k resolution, highly detailed, commercial photography";
+    let fullPrompt = `${prompt}, ${qualityKeywords}`;
 
-    // Return a placeholder image URL
-    return "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop";
+    if (settings) {
+        if (settings.stylePreset && settings.stylePreset !== 'none') {
+            fullPrompt += `, style: ${settings.stylePreset}`;
+        }
+        // Note: Aspect ratio and negative prompt might need specific handling depending on the model's capabilities
+        // For now, we append them to the text prompt as guidance
+        if (settings.aspectRatio) {
+            fullPrompt += `, aspect ratio: ${settings.aspectRatio}`;
+        }
+        if (settings.negativePrompt) {
+            fullPrompt += `, avoid: ${settings.negativePrompt}`;
+        }
+    }
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                contents: [{
+                    parts: [{
+                        text: fullPrompt
+                    }]
+                }]
+            })
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`API request failed: ${response.status} ${response.statusText} - ${errorText}`);
+        }
+
+        const json = await response.json();
+
+        if (json.candidates && json.candidates[0]?.content?.parts) {
+            const part = json.candidates[0].content.parts.find((p: any) => p.inlineData);
+            if (part && part.inlineData) {
+                return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+            }
+        }
+
+        throw new Error("No image data found in response");
+    } catch (error) {
+        console.error("Error generating image:", error);
+        throw error;
+    }
 }

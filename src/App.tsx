@@ -4,7 +4,8 @@ import { ChatInterface, type Message } from './components/ChatInterface';
 import { ImageGenerator } from './components/ImageGenerator';
 import { ControlPanel, type GenerationSettings } from './components/ControlPanel';
 import { analyzeDocument, generateImage } from './services/gemini';
-import { Sparkles, Menu } from 'lucide-react';
+import { Sparkles, Settings2, Megaphone, LayoutTemplate, Target, Share2, Loader2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 function App() {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -13,6 +14,7 @@ function App() {
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [currentPrompt, setCurrentPrompt] = useState<string | null>(null);
   const [showControls, setShowControls] = useState(true);
+  const [inputInternal, setInputInternal] = useState("");
 
   const [settings, setSettings] = useState<GenerationSettings>({
     aspectRatio: '16:9',
@@ -69,6 +71,14 @@ function App() {
       ]);
     } catch (error) {
       console.error("Error generating image:", error);
+      setMessages(prev => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: `Error generating image: ${error instanceof Error ? error.message : 'Unknown error'}`
+        }
+      ]);
     } finally {
       setIsGenerating(false);
     }
@@ -80,12 +90,13 @@ function App() {
       {
         id: Date.now().toString(),
         role: 'assistant',
-        content: "I'm regenerating the prompt based on a different angle..."
+        content: "I'm refining the prompt to better match a professional financial aesthetic..."
       }
     ]);
 
     setTimeout(() => {
-      const newPrompt = "A different perspective: " + currentPrompt;
+      // In a real app, this would call the LLM to rewrite the prompt
+      const newPrompt = "Refined Version: " + currentPrompt + " --style corporate-premium --palette slate-blue-gold --quality 8k";
       setCurrentPrompt(newPrompt);
       setMessages(prev => [
         ...prev,
@@ -110,6 +121,7 @@ function App() {
     ]);
 
     setCurrentPrompt(message);
+    setInputInternal(""); // Clear the input field after sending
 
     setTimeout(() => {
       setMessages(prev => [
@@ -124,10 +136,17 @@ function App() {
     }, 500);
   }, []);
 
+  const quickPrompts = [
+    { icon: Megaphone, label: "Campaign Launch", prompt: "A high-impact visual for a new product launch featuring dramatic lighting, sleek product placement, and bold, modern typography space." },
+    { icon: LayoutTemplate, label: "Social Media Series", prompt: "A cohesive set of lifestyle-focused images for an Instagram campaign, using a warm, authentic color palette and natural lighting." },
+    { icon: Target, label: "Brand Awareness", prompt: "A conceptual, abstract representation of 'Innovation and Trust', utilizing geometric shapes, glassmorphism, and the corporate color palette." },
+    { icon: Share2, label: "Event Promotion", prompt: "A dynamic, high-energy banner for an upcoming tech conference, featuring futuristic cityscapes and connected network nodes." }
+  ];
+
   return (
-    <div className="flex h-screen bg-[#0a0a0a] text-neutral-200 overflow-hidden">
+    <div className="flex h-screen bg-[#0B0F17] text-slate-100 overflow-hidden font-sans selection:bg-blue-500/30">
       {/* Sidebar Controls */}
-      <div className={`${showControls ? 'w-80' : 'w-0'} transition-all duration-300 ease-in-out overflow-hidden border-r border-neutral-800 bg-neutral-900/30`}>
+      <div className={`${showControls ? 'w-80' : 'w-0'} transition-all duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] overflow-hidden bg-[#0F1420] border-r border-white/5 relative z-20 shadow-2xl`}>
         <ControlPanel
           settings={settings}
           onSettingsChange={setSettings}
@@ -136,103 +155,142 @@ function App() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden relative">
-        <header className="h-16 border-b border-neutral-800 flex items-center justify-between px-6 bg-neutral-900/50 backdrop-blur-sm z-10">
+      <main className="flex-1 flex flex-col relative z-10">
+        {/* Header */}
+        <header className="h-20 flex items-center justify-between px-8 bg-[#0B0F17]/80 backdrop-blur-xl border-b border-white/5 z-10">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setShowControls(!showControls)}
-              className="p-2 hover:bg-neutral-800 rounded-lg transition-colors"
+              className="p-2.5 rounded-xl hover:bg-white/5 text-slate-400 hover:text-white transition-all duration-200"
             >
-              <Menu className="w-5 h-5 text-neutral-400" />
+              <Settings2 className="w-5 h-5" />
             </button>
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-yellow-400 rounded-lg flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-black" />
-              </div>
-              <h1 className="text-xl font-bold tracking-tight text-white">
-                Nano Banana <span className="text-yellow-400">Pro</span>
-              </h1>
+            <h1 className="text-2xl font-medium tracking-tight text-white">
+              Nano Banana <span className="text-blue-500 font-bold">Pro</span>
+            </h1>
+            <span className="px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 text-xs font-medium border border-blue-500/20">
+              Enterprise Marketing Console
+            </span>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/5">
+              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-xs font-medium text-slate-300">System Online</span>
             </div>
           </div>
-          <div className="text-xs text-neutral-500 font-mono">v1.1.0</div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-8">
-          <div className="max-w-5xl mx-auto flex flex-col items-center gap-8 pb-20">
-            {!messages.length && !isProcessing && (
-              <div className="text-center mt-12 mb-8 space-y-8 w-full max-w-2xl">
-                <div className="space-y-4">
-                  <h2 className="text-4xl md:text-5xl font-bold bg-gradient-to-b from-white to-white/40 bg-clip-text text-transparent">
-                    Create with Intent
-                  </h2>
-                  <p className="text-lg text-neutral-400">
-                    Describe your vision or upload a document to start generating professional visuals.
-                  </p>
+        {/* Scrollable Content Area */}
+        <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
+          <div className="max-w-7xl mx-auto p-8 pb-32 space-y-12">
+
+            {/* Hero Section */}
+            <div className="flex flex-col lg:flex-row gap-8 items-start justify-center min-h-[500px]">
+              {/* Left Column: Chat & Input */}
+              <div className="flex-1 w-full max-w-2xl space-y-6">
+                <div className="bg-[#0F1420] rounded-3xl border border-white/5 shadow-xl overflow-hidden">
+                  <ChatInterface
+                    messages={messages}
+                    onConfirmPrompt={handleConfirmPrompt}
+                    onRegeneratePrompt={handleRegeneratePrompt}
+                    onSendMessage={handleSendMessage}
+                    isGenerating={isGenerating}
+                  />
                 </div>
 
-                <div className="w-full">
+                {/* Input Area */}
+                <div className="bg-[#0F1420] p-2 rounded-3xl border border-white/5 shadow-2xl shadow-black/50 transition-all duration-300 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500/30">
                   <form
                     onSubmit={(e) => {
                       e.preventDefault();
-                      const input = (e.currentTarget.elements.namedItem('initial-prompt') as HTMLInputElement).value;
-                      if (input.trim()) handleSendMessage(input.trim());
+                      if (inputInternal.trim()) handleSendMessage(inputInternal.trim());
                     }}
-                    className="relative flex items-center group"
+                    className="relative flex flex-col group"
                   >
-                    <input
-                      name="initial-prompt"
-                      type="text"
-                      placeholder="Describe what you want to create..."
-                      className="w-full bg-neutral-900/50 border border-neutral-800 text-neutral-200 placeholder-neutral-500 rounded-2xl py-4 pl-6 pr-14 text-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:border-yellow-400/50 transition-all shadow-lg shadow-black/20 group-hover:border-neutral-700"
+                    <textarea
+                      value={inputInternal}
+                      onChange={(e) => setInputInternal(e.target.value)}
+                      placeholder="Describe the marketing campaign, visual asset, or brand concept you want to visualize..."
+                      className="w-full bg-transparent text-lg text-white placeholder-slate-500 rounded-2xl p-6 focus:outline-none resize-none min-h-[140px] leading-relaxed"
                     />
-                    <button
-                      type="submit"
-                      className="absolute right-2 p-2.5 bg-yellow-400 text-black rounded-xl hover:bg-yellow-500 transition-colors shadow-lg shadow-yellow-400/20"
-                    >
-                      <Sparkles className="w-5 h-5" />
-                    </button>
+                    <div className="flex justify-between items-center px-4 pb-2">
+                      <div className="flex gap-2">
+                        {/* Future attachment buttons could go here */}
+                      </div>
+                      <button
+                        type="submit"
+                        disabled={!inputInternal.trim() || isGenerating}
+                        className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-900/20 hover:shadow-blue-900/40 active:scale-95"
+                      >
+                        {isGenerating ? (
+                          <>
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            <span>Processing...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-5 h-5" />
+                            <span>Generate</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </form>
                 </div>
+              </div>
 
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-neutral-800"></div>
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-[#0a0a0a] text-neutral-500">Or start with a document</span>
-                  </div>
+              {/* Right Column: Upload & Preview */}
+              <div className="flex-1 w-full max-w-xl space-y-6">
+                <div className="bg-[#0F1420] rounded-3xl border border-white/5 p-1 shadow-xl">
+                  <DragDropZone onFileSelect={handleFileSelect} isProcessing={isProcessing} />
                 </div>
+
+                <AnimatePresence mode="wait">
+                  {generatedImage && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      className="bg-[#0F1420] rounded-3xl border border-white/5 p-1 shadow-xl"
+                    >
+                      <ImageGenerator imageUrl={generatedImage} isGenerating={isGenerating} />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
-            )}
+            </div>
 
-            <DragDropZone
-              onFileSelect={handleFileSelect}
-              isProcessing={isProcessing}
-            />
-
-            {(messages.length > 0 || isProcessing) && (
-              <div className="w-full flex gap-6 items-start justify-center flex-wrap xl:flex-nowrap">
-                <ChatInterface
-                  messages={messages}
-                  onConfirmPrompt={handleConfirmPrompt}
-                  onRegeneratePrompt={handleRegeneratePrompt}
-                  onSendMessage={handleSendMessage}
-                  isGenerating={isGenerating}
-                />
-
-                {(generatedImage || isGenerating) && (
-                  <div className="flex-1 min-w-[300px] max-w-2xl sticky top-8">
-                    <ImageGenerator
-                      imageUrl={generatedImage}
-                      isGenerating={isGenerating}
-                    />
-                  </div>
-                )}
+            {/* Quick Prompts Section */}
+            <div className="space-y-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-800 to-transparent" />
+                <span className="text-slate-500 text-sm font-medium uppercase tracking-wider">Quick Start</span>
+                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-800 to-transparent" />
               </div>
-            )}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {quickPrompts.map((item, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setInputInternal(item.prompt)}
+                    className="group flex flex-col gap-4 p-6 bg-[#0F1420] hover:bg-[#161b26] border border-white/5 hover:border-blue-500/30 rounded-2xl text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-blue-900/10"
+                  >
+                    <div className="p-3 bg-slate-900/50 rounded-xl w-fit group-hover:bg-blue-500/10 group-hover:text-blue-400 transition-colors">
+                      <item.icon className="w-6 h-6 text-slate-400 group-hover:text-blue-400" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-slate-200 group-hover:text-white mb-1">{item.label}</h3>
+                      <p className="text-sm text-slate-500 group-hover:text-slate-400 line-clamp-2 leading-relaxed">
+                        {item.prompt}
+                      </p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
           </div>
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

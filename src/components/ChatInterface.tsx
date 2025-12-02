@@ -45,8 +45,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     };
 
     return (
-        <div className="flex flex-col h-[600px] w-full max-w-2xl bg-neutral-900/50 rounded-2xl border border-neutral-800 overflow-hidden">
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex flex-col h-[600px] w-full max-w-2xl bg-slate-900/50 rounded-2xl border border-slate-800 overflow-hidden shadow-xl shadow-black/20">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-slate-700">
                 <AnimatePresence initial={false}>
                     {messages.map((message) => (
                         <motion.div
@@ -59,30 +59,30 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                             )}
                         >
                             <div className={cn(
-                                "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
-                                message.role === 'user' ? "bg-neutral-700" : "bg-yellow-400"
+                                "w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-md",
+                                message.role === 'user' ? "bg-blue-600" : "bg-slate-800 border border-slate-700"
                             )}>
                                 {message.role === 'user' ? (
-                                    <User className="w-5 h-5 text-neutral-300" />
+                                    <User className="w-5 h-5 text-white" />
                                 ) : (
-                                    <Bot className="w-5 h-5 text-black" />
+                                    <Bot className="w-5 h-5 text-blue-400" />
                                 )}
                             </div>
 
                             <div className={cn(
-                                "p-3 rounded-2xl text-sm leading-relaxed",
+                                "p-3 rounded-2xl text-sm leading-relaxed shadow-sm",
                                 message.role === 'user'
-                                    ? "bg-neutral-800 text-neutral-200 rounded-tr-sm"
-                                    : "bg-neutral-800/50 text-neutral-200 border border-neutral-700 rounded-tl-sm"
+                                    ? "bg-blue-600 text-white rounded-tr-sm"
+                                    : "bg-slate-800 text-slate-200 border border-slate-700 rounded-tl-sm"
                             )}>
                                 {message.content}
 
                                 {message.isPrompt && (
-                                    <div className="mt-4 flex gap-2 pt-3 border-t border-neutral-700">
+                                    <div className="mt-4 flex gap-2 pt-3 border-t border-slate-700/50">
                                         <button
                                             onClick={onConfirmPrompt}
                                             disabled={isGenerating}
-                                            className="flex items-center gap-2 px-3 py-1.5 bg-yellow-400 hover:bg-yellow-500 text-black rounded-lg text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className="flex items-center gap-2 px-3 py-1.5 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                                         >
                                             <Check className="w-3 h-3" />
                                             Confirm & Generate
@@ -90,7 +90,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                                         <button
                                             onClick={onRegeneratePrompt}
                                             disabled={isGenerating}
-                                            className="flex items-center gap-2 px-3 py-1.5 bg-neutral-700 hover:bg-neutral-600 text-neutral-200 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                                         >
                                             <RefreshCw className="w-3 h-3" />
                                             Regenerate
@@ -104,7 +104,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 <div ref={messagesEndRef} />
             </div>
 
-            <form onSubmit={handleSubmit} className="p-4 border-t border-neutral-800 bg-neutral-900/30">
+            <form onSubmit={handleSubmit} className="p-4 border-t border-slate-800 bg-slate-900/30">
                 <div className="relative flex items-center">
                     <input
                         type="text"
@@ -112,12 +112,12 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                         onChange={(e) => setInputValue(e.target.value)}
                         placeholder="Describe your intent or refine the prompt..."
                         disabled={isGenerating}
-                        className="w-full bg-neutral-800 text-neutral-200 placeholder-neutral-500 rounded-xl py-3 pl-4 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400/50 border border-transparent focus:border-yellow-400/50 transition-all"
+                        className="w-full bg-slate-800 text-slate-200 placeholder-slate-500 rounded-xl py-3 pl-4 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 border border-transparent focus:border-blue-500/50 transition-all"
                     />
                     <button
                         type="submit"
                         disabled={!inputValue.trim() || isGenerating}
-                        className="absolute right-2 p-1.5 bg-yellow-400 text-black rounded-lg hover:bg-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="absolute right-2 p-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
                     >
                         <User className="w-4 h-4" />
                     </button>
