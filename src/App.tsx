@@ -2,12 +2,14 @@ import { useState, useCallback } from 'react';
 import { DragDropZone } from './components/DragDropZone';
 import { ChatInterface, type Message } from './components/ChatInterface';
 import { ImageGenerator } from './components/ImageGenerator';
+import { Login } from './components/Login';
 import { ControlPanel, type GenerationSettings } from './components/ControlPanel';
 import { analyzeDocument, generateImage } from './services/gemini';
-import { Sparkles, Settings2, Megaphone, LayoutTemplate, Target, Share2, Loader2 } from 'lucide-react';
+import { Sparkles, Settings2, Megaphone, LayoutTemplate, Target, Share2, Loader2, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -143,6 +145,10 @@ function App() {
     { icon: Share2, label: "Event Promotion", prompt: "A dynamic, high-energy banner for an upcoming tech conference, featuring futuristic cityscapes and connected network nodes." }
   ];
 
+  if (!isAuthenticated) {
+    return <Login onLogin={setIsAuthenticated} />;
+  }
+
   return (
     <div className="flex h-screen bg-[#0B0F17] text-slate-100 overflow-hidden font-sans selection:bg-blue-500/30">
       {/* Sidebar Controls */}
@@ -177,6 +183,13 @@ function App() {
               <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               <span className="text-xs font-medium text-slate-300">System Online</span>
             </div>
+            <button
+              onClick={() => setIsAuthenticated(false)}
+              className="p-2 rounded-full hover:bg-white/5 text-slate-400 hover:text-white transition-colors"
+              title="Sign Out"
+            >
+              <LogOut className="w-5 h-5" />
+            </button>
           </div>
         </header>
 
