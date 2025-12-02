@@ -21,8 +21,8 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
         setTimeout(() => {
             // Hardcoded credentials for demo purposes
             // In a real app, these would be validated against a backend
-            const validUser = import.meta.env.VITE_APP_USERNAME || 'admin';
-            const validPass = import.meta.env.VITE_APP_PASSWORD || 'password';
+            const validUser = import.meta.env.VITE_APP_USERNAME || 'Testing';
+            const validPass = import.meta.env.VITE_APP_PASSWORD || 'Appleqwerty123';
 
             if (username === validUser && password === validPass) {
                 onLogin(true);
