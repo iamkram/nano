@@ -22,7 +22,10 @@ export const DragDropZone: React.FC<DragDropZoneProps> = ({ onFileSelect, isProc
             'text/plain': ['.txt', '.md'],
             'application/pdf': ['.pdf'],
             'application/msword': ['.doc'],
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx']
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+            'image/png': ['.png'],
+            'image/jpeg': ['.jpg', '.jpeg'],
+            'image/webp': ['.webp']
         },
         multiple: false,
         disabled: isProcessing

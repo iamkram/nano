@@ -2,9 +2,11 @@ import React from 'react';
 import { Settings2, Sliders, Image as ImageIcon, Maximize, Ban } from 'lucide-react';
 import { cn } from '../lib/utils';
 
+import { stylePresets } from '../lib/stylePresetLibrary';
+
 export interface GenerationSettings {
     aspectRatio: '1:1' | '16:9' | '9:16' | '4:3' | '3:4';
-    stylePreset: 'infographic' | 'photographic' | 'digital-art' | 'cinematic' | 'anime' | '3d-model' | 'advertisement' | 'social-media' | 'product-shot' | 'none';
+    stylePreset: string;
     negativePrompt: string;
     guidanceScale: number;
 }
@@ -45,23 +47,13 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                         Style Preset
                     </label>
                     <div className="grid grid-cols-2 gap-2">
-                        {[
-                            { label: 'Infographic', value: 'infographic' },
-                            { label: 'Photographic', value: 'photographic' },
-                            { label: 'Advertisement', value: 'advertisement' },
-                            { label: 'Social Media', value: 'social-media' },
-                            { label: 'Product Shot', value: 'product-shot' },
-                            { label: 'Cinematic', value: 'cinematic' },
-                            { label: 'Digital Art', value: 'digital-art' },
-                            { label: '3D Model', value: '3d-model' },
-                            { label: 'None', value: 'none' }
-                        ].map((style) => {
-                            const isActive = settings.stylePreset === style.value;
+                        {stylePresets.map((style) => {
+                            const isActive = settings.stylePreset === style.id;
                             return (
                                 <button
-                                    key={style.value}
+                                    key={style.id}
                                     type="button"
-                                    onClick={() => handleChange('stylePreset', style.value as GenerationSettings['stylePreset'])}
+                                    onClick={() => handleChange('stylePreset', style.id)}
                                     className={cn(
                                         "px-3 py-2.5 text-xs font-medium rounded-xl border transition-all duration-200 cursor-pointer text-left relative overflow-hidden group",
                                         isActive

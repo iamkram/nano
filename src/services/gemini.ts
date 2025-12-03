@@ -1,4 +1,5 @@
 import type { GenerationSettings } from '../components/ControlPanel';
+import { stylePresets } from '../lib/stylePresetLibrary';
 
 export interface GeminiResponse {
     prompt: string;
@@ -23,26 +24,70 @@ const fileToGenerativePart = async (file: File): Promise<{ inlineData: { data: s
     });
 };
 
-export const analyzeDocument = async (file: File): Promise<GeminiResponse> => {
+export const analyzeDocument = async (file: File, stylePreset?: string, template?: string): Promise<GeminiResponse> => {
     const apiKey = import.meta.env.VITE_NANO_BANANA_PRO_API_KEY;
     if (!apiKey) throw new Error("API key is missing");
 
-    // Use gemini-1.5-pro for deep, high-quality document analysis
-    const model = "gemini-1.5-pro";
+    // Use gemini-3-pro-preview for the latest and greatest capabilities
+    const model = "gemini-3-pro-preview";
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
-    console.log("Analyzing file:", file.name);
+    console.log("Analyzing file:", file.name, "with style:", stylePreset);
 
     try {
         const filePart = await fileToGenerativePart(file);
 
+        let styleContext = "";
+        if (stylePreset) {
+            const preset = stylePresets.find(p => p.id === stylePreset);
+            if (preset) {
+                styleContext = `
+                **Target Style Context:**
+                The user intends to generate an image in the style of "${preset.label}".
+                Style Modifiers: "${preset.modifier}".
+                Ensure the generated prompt aligns perfectly with this aesthetic.
+                `;
+            }
+        }
+
+        let templateContext = "";
+        if (template) {
+            console.log("Using template for analysis:", template);
+            templateContext = `
+            **Target Template:**
+            The user wants to generate an image based on this specific template structure:
+            "${template}"
+            
+            **INSTRUCTION:**
+            1. Analyze the document/image to find values for the placeholders (e.g., {{Subject}}, {{Setting}}) in the template.
+            2. If a specific value is not found, infer a suitable professional detail based on the context.
+            3. Your output MUST be the completed template string.
+            4. Do NOT output the placeholders. Replace them with the extracted/inferred details.
+            `;
+        }
+
         const promptText = `
-            You are an expert creative director. 
-            Analyze the attached document deeply. 
-            Create a detailed, high-quality image generation prompt that visually represents the core concepts, themes, and key information in this document.
-            The prompt should be suitable for a high-end AI image generator.
-            Focus on visual elements, style, lighting, and composition.
-            Do not summarize the document text; translate it into a visual description.
+            You are an expert creative director and prompt engineer for a high-end AI image generator (Nano Banana Pro).
+            Analyze the attached document or image deeply.
+            ${styleContext}
+            ${templateContext}
+            Create a detailed, high-quality image generation prompt that visually represents the core concepts, themes, and key information in this file.
+            
+            ${!template ? `
+            **Prompt Structure:**
+            1. **Subject:** Clearly define the main subject.
+            2. **Context/Setting:** Describe the environment and background.
+            3. **Action:** What is happening?
+            4. **Style:** (e.g., Photorealistic, Cinematic, 3D Render, Vector Art).
+            5. **Technical Specs:** Lighting (e.g., golden hour, studio), Camera (e.g., 50mm, f/1.8), and Resolution (e.g., 8k, UHD).
+            ` : ''}
+            
+            **Guidelines:**
+            - Use natural language and full sentences.
+            - Be specific and descriptive.
+            - Focus on visual elements, not abstract concepts.
+            - Do not summarize the document text; translate it into a visual description.
+            
             Output ONLY the prompt text.
         `;
 
@@ -94,7 +139,10 @@ export const generateImage = async (prompt: string, settings?: GenerationSetting
 
     if (settings) {
         if (settings.stylePreset && settings.stylePreset !== 'none') {
-            fullPrompt += `, style: ${settings.stylePreset}`;
+            const selectedPreset = stylePresets.find(p => p.id === settings.stylePreset);
+            if (selectedPreset && selectedPreset.modifier) {
+                fullPrompt += `, ${selectedPreset.modifier}`;
+            }
         }
         // Note: Aspect ratio and negative prompt might need specific handling depending on the model's capabilities
         // For now, we append them to the text prompt as guidance
