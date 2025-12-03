@@ -43,6 +43,9 @@ export const generateImage = async (prompt: string, settings?: GenerationSetting
         if (settings.negativePrompt) {
             fullPrompt += `, avoid: ${settings.negativePrompt}`;
         }
+        if (settings.guidanceScale) {
+            fullPrompt += `, guidance scale: ${settings.guidanceScale}`;
+        }
     }
 
     try {

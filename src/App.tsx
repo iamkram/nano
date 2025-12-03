@@ -14,7 +14,6 @@ function App() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
-  const [currentPrompt, setCurrentPrompt] = useState<string | null>(null);
   const [showControls, setShowControls] = useState(true);
   const [inputInternal, setInputInternal] = useState("");
 
@@ -30,14 +29,14 @@ function App() {
     try {
       const response = await analyzeDocument(file);
       const newPrompt = response.prompt;
-      setCurrentPrompt(newPrompt);
 
       setMessages(prev => [
         ...prev,
         {
           id: Date.now().toString(),
           role: 'assistant',
-          content: `I've analyzed ${file.name}. Here is a suggested prompt for the image generation:\n\n"${newPrompt}"\n\nWould you like to generate this image or refine the prompt?`,
+          content: `I've analyzed ${file.name}. Here is a suggested prompt for the image generation:`,
+          promptContent: newPrompt,
           isPrompt: true
         }
       ]);
@@ -56,12 +55,12 @@ function App() {
     }
   }, []);
 
-  const handleConfirmPrompt = useCallback(async () => {
-    if (!currentPrompt) return;
+  const handleConfirmPrompt = useCallback(async (promptToUse: string) => {
+    if (!promptToUse) return;
 
     setIsGenerating(true);
     try {
-      const imageUrl = await generateImage(currentPrompt, settings);
+      const imageUrl = await generateImage(promptToUse, settings);
       setGeneratedImage(imageUrl);
       setMessages(prev => [
         ...prev,
@@ -84,9 +83,9 @@ function App() {
     } finally {
       setIsGenerating(false);
     }
-  }, [currentPrompt, settings]);
+  }, [settings]);
 
-  const handleRegeneratePrompt = useCallback(() => {
+  const handleRegeneratePrompt = useCallback((promptToRefine: string) => {
     setMessages(prev => [
       ...prev,
       {
@@ -98,19 +97,19 @@ function App() {
 
     setTimeout(() => {
       // In a real app, this would call the LLM to rewrite the prompt
-      const newPrompt = "Refined Version: " + currentPrompt + " --style corporate-premium --palette slate-blue-gold --quality 8k";
-      setCurrentPrompt(newPrompt);
+      const newPrompt = "Refined Version: " + promptToRefine + " --style corporate-premium --palette slate-blue-gold --quality 8k";
       setMessages(prev => [
         ...prev,
         {
           id: Date.now().toString(),
           role: 'assistant',
-          content: `Here is the refined prompt:\n\n"${newPrompt}"`,
+          content: `Here is the refined prompt:`,
+          promptContent: newPrompt,
           isPrompt: true
         }
       ]);
     }, 1000);
-  }, [currentPrompt]);
+  }, []);
 
   const handleSendMessage = useCallback((message: string) => {
     setMessages(prev => [
@@ -122,7 +121,6 @@ function App() {
       }
     ]);
 
-    setCurrentPrompt(message);
     setInputInternal(""); // Clear the input field after sending
 
     setTimeout(() => {
@@ -131,7 +129,8 @@ function App() {
         {
           id: Date.now().toString(),
           role: 'assistant',
-          content: `I've updated the prompt based on your input:\n\n"${message}"`,
+          content: `I've updated the prompt based on your input:`,
+          promptContent: message,
           isPrompt: true
         }
       ]);

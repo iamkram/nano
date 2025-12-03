@@ -1,5 +1,5 @@
-import React, { useRef, useEffect } from 'react';
-import { Bot, User, Check, RefreshCw } from 'lucide-react';
+import React, { useRef, useEffect, useState } from 'react';
+import { Bot, User, Check, RefreshCw, Pencil } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -8,15 +8,133 @@ export interface Message {
     role: 'user' | 'assistant';
     content: string;
     isPrompt?: boolean;
+    promptContent?: string;
 }
 
 interface ChatInterfaceProps {
     messages: Message[];
-    onConfirmPrompt: () => void;
-    onRegeneratePrompt: () => void;
+    onConfirmPrompt: (prompt: string) => void;
+    onRegeneratePrompt: (prompt: string) => void;
     onSendMessage: (message: string) => void;
     isGenerating: boolean;
 }
+
+const ChatMessage = ({
+    message,
+    onConfirm,
+    onRegenerate,
+    isGenerating
+}: {
+    message: Message;
+    onConfirm: (p: string) => void;
+    onRegenerate: (p: string) => void;
+    isGenerating: boolean;
+}) => {
+    const [promptText, setPromptText] = useState(message.promptContent || "");
+    const [isEditing, setIsEditing] = useState(false);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    useEffect(() => {
+        if (message.promptContent) {
+            setPromptText(message.promptContent);
+        }
+    }, [message.promptContent]);
+
+    useEffect(() => {
+        if (isEditing && textareaRef.current) {
+            textareaRef.current.focus();
+            textareaRef.current.style.height = 'auto';
+            textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+        }
+    }, [isEditing]);
+
+    const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        setPromptText(e.target.value);
+        e.target.style.height = 'auto';
+        e.target.style.height = e.target.scrollHeight + 'px';
+    };
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={cn(
+                "flex gap-3 max-w-[85%]", // Increased width for better editing experience
+                message.role === 'user' ? "ml-auto flex-row-reverse" : "mr-auto"
+            )}
+        >
+            <div className={cn(
+                "w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-md",
+                message.role === 'user' ? "bg-blue-600" : "bg-slate-800 border border-slate-700"
+            )}>
+                {message.role === 'user' ? (
+                    <User className="w-5 h-5 text-white" />
+                ) : (
+                    <Bot className="w-5 h-5 text-blue-400" />
+                )}
+            </div>
+
+            <div className={cn(
+                "p-4 rounded-2xl text-sm leading-relaxed shadow-sm w-full",
+                message.role === 'user'
+                    ? "bg-blue-600 text-white rounded-tr-sm"
+                    : "bg-slate-800 text-slate-200 border border-slate-700 rounded-tl-sm"
+            )}>
+                <div className="whitespace-pre-wrap mb-2">{message.content}</div>
+
+                {message.isPrompt && (
+                    <div className="mt-3 space-y-3">
+                        <div className={cn(
+                            "relative group rounded-xl overflow-hidden transition-all duration-200",
+                            isEditing ? "ring-2 ring-blue-500/50 bg-slate-900" : "bg-slate-900/50 hover:bg-slate-900"
+                        )}>
+                            <textarea
+                                ref={textareaRef}
+                                value={promptText}
+                                onChange={handleTextareaChange}
+                                disabled={!isEditing && !message.isPrompt} // Always allow editing if it's a prompt message and we are in edit mode
+                                readOnly={!isEditing}
+                                className={cn(
+                                    "w-full bg-transparent text-slate-200 p-4 text-sm leading-relaxed resize-none outline-none font-mono",
+                                    !isEditing && "cursor-default"
+                                )}
+                                rows={3}
+                            />
+                            {!isEditing && (
+                                <button
+                                    onClick={() => setIsEditing(true)}
+                                    className="absolute top-2 right-2 p-1.5 rounded-lg bg-slate-800/50 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-blue-500 hover:text-white"
+                                    title="Edit Prompt"
+                                >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                </button>
+                            )}
+                        </div>
+
+                        <div className="flex gap-2 pt-2 border-t border-slate-700/50">
+                            <button
+                                onClick={() => onConfirm(promptText)}
+                                disabled={isGenerating}
+                                className="flex items-center gap-2 px-3 py-1.5 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                            >
+                                <Check className="w-3 h-3" />
+                                Confirm & Generate
+                            </button>
+                            <button
+                                onClick={() => onRegenerate(promptText)}
+                                disabled={isGenerating}
+                                className="flex items-center gap-2 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                            >
+                                <RefreshCw className="w-3 h-3" />
+                                Regenerate
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </motion.div>
+    );
+};
 
 export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     messages,
@@ -49,56 +167,13 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
             <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-slate-700">
                 <AnimatePresence initial={false}>
                     {messages.map((message) => (
-                        <motion.div
+                        <ChatMessage
                             key={message.id}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className={cn(
-                                "flex gap-3 max-w-[80%]",
-                                message.role === 'user' ? "ml-auto flex-row-reverse" : "mr-auto"
-                            )}
-                        >
-                            <div className={cn(
-                                "w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-md",
-                                message.role === 'user' ? "bg-blue-600" : "bg-slate-800 border border-slate-700"
-                            )}>
-                                {message.role === 'user' ? (
-                                    <User className="w-5 h-5 text-white" />
-                                ) : (
-                                    <Bot className="w-5 h-5 text-blue-400" />
-                                )}
-                            </div>
-
-                            <div className={cn(
-                                "p-3 rounded-2xl text-sm leading-relaxed shadow-sm",
-                                message.role === 'user'
-                                    ? "bg-blue-600 text-white rounded-tr-sm"
-                                    : "bg-slate-800 text-slate-200 border border-slate-700 rounded-tl-sm"
-                            )}>
-                                {message.content}
-
-                                {message.isPrompt && (
-                                    <div className="mt-4 flex gap-2 pt-3 border-t border-slate-700/50">
-                                        <button
-                                            onClick={onConfirmPrompt}
-                                            disabled={isGenerating}
-                                            className="flex items-center gap-2 px-3 py-1.5 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-                                        >
-                                            <Check className="w-3 h-3" />
-                                            Confirm & Generate
-                                        </button>
-                                        <button
-                                            onClick={onRegeneratePrompt}
-                                            disabled={isGenerating}
-                                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-                                        >
-                                            <RefreshCw className="w-3 h-3" />
-                                            Regenerate
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                        </motion.div>
+                            message={message}
+                            onConfirm={onConfirmPrompt}
+                            onRegenerate={onRegeneratePrompt}
+                            isGenerating={isGenerating}
+                        />
                     ))}
                 </AnimatePresence>
                 <div ref={messagesEndRef} />
