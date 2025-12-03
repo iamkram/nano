@@ -5,7 +5,7 @@ import { ImageGenerator } from './components/ImageGenerator';
 import { Login } from './components/Login';
 import { ControlPanel, type GenerationSettings } from './components/ControlPanel';
 import { analyzeDocument, generateImage } from './services/gemini';
-import { Sparkles, Settings2, Megaphone, LayoutTemplate, Target, Share2, Loader2, LogOut } from 'lucide-react';
+import { Sparkles, Settings2, Megaphone, LayoutTemplate, Target, Share2, Loader2, LogOut, BarChart3, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 function App() {
@@ -142,7 +142,9 @@ function App() {
     { icon: Megaphone, label: "Campaign Launch", prompt: "A high-impact visual for a new product launch featuring dramatic lighting, sleek product placement, and bold, modern typography space." },
     { icon: LayoutTemplate, label: "Social Media Series", prompt: "A cohesive set of lifestyle-focused images for an Instagram campaign, using a warm, authentic color palette and natural lighting." },
     { icon: Target, label: "Brand Awareness", prompt: "A conceptual, abstract representation of 'Innovation and Trust', utilizing geometric shapes, glassmorphism, and the corporate color palette." },
-    { icon: Share2, label: "Event Promotion", prompt: "A dynamic, high-energy banner for an upcoming tech conference, featuring futuristic cityscapes and connected network nodes." }
+    { icon: Share2, label: "Event Promotion", prompt: "A dynamic, high-energy banner for an upcoming tech conference, featuring futuristic cityscapes and connected network nodes." },
+    { icon: BarChart3, label: "Earnings Report", prompt: "Generate a clean, modern infographic summarizing the key financial highlights from this earnings report. Include charts for 'Revenue Growth' and 'Net Income', and highlight the CEO's key quote in a stylized pull-quote box." },
+    { icon: FileText, label: "Visual Summary", prompt: "Compress this dense text into a clear visual aid. Transform complex paragraphs into intuitive diagrams and flowcharts, reducing reading time while retaining key information." }
   ];
 
   if (!isAuthenticated) {
