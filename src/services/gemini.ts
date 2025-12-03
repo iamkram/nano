@@ -4,16 +4,77 @@ export interface GeminiResponse {
     prompt: string;
 }
 
+const fileToGenerativePart = async (file: File): Promise<{ inlineData: { data: string; mimeType: string } }> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const base64String = reader.result as string;
+            // Remove the data URL prefix (e.g., "data:application/pdf;base64,")
+            const base64Data = base64String.split(',')[1];
+            resolve({
+                inlineData: {
+                    data: base64Data,
+                    mimeType: file.type
+                }
+            });
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+};
+
 export const analyzeDocument = async (file: File): Promise<GeminiResponse> => {
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    const apiKey = import.meta.env.VITE_NANO_BANANA_PRO_API_KEY;
+    if (!apiKey) throw new Error("API key is missing");
+
+    // Use gemini-1.5-pro for deep, high-quality document analysis
+    const model = "gemini-1.5-pro";
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
     console.log("Analyzing file:", file.name);
 
-    // Mock response based on file name
-    return {
-        prompt: `**Concept:** A compelling marketing visual derived from ${file.name}.\n**Key Message:** Highlighting core value propositions and brand identity.\n**Composition:** Dynamic commercial layout, rule of thirds, clear focal point for product or message.\n**Style:** Premium advertising aesthetic, on-brand color palette, high-fidelity textures, persuasive visual hierarchy.\n**Lighting:** Studio-quality commercial lighting, emphasizing depth and quality.\n**Context:** Suitable for high-impact digital campaigns and print media.`,
-    };
+    try {
+        const filePart = await fileToGenerativePart(file);
+
+        const promptText = `
+            You are an expert creative director. 
+            Analyze the attached document deeply. 
+            Create a detailed, high-quality image generation prompt that visually represents the core concepts, themes, and key information in this document.
+            The prompt should be suitable for a high-end AI image generator.
+            Focus on visual elements, style, lighting, and composition.
+            Do not summarize the document text; translate it into a visual description.
+            Output ONLY the prompt text.
+        `;
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{
+                    parts: [
+                        { text: promptText },
+                        filePart
+                    ]
+                }]
+            })
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Analysis failed: ${response.status} ${response.statusText} - ${errorText}`);
+        }
+
+        const json = await response.json();
+        const generatedText = json.candidates?.[0]?.content?.parts?.[0]?.text;
+
+        if (!generatedText) throw new Error("No text generated from analysis");
+
+        return { prompt: generatedText };
+
+    } catch (error) {
+        console.error("Error analyzing document:", error);
+        throw error;
+    }
 };
 
 export const generateImage = async (prompt: string, settings?: GenerationSettings): Promise<string> => {
