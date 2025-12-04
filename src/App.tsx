@@ -56,7 +56,7 @@ function App() {
     } finally {
       setIsProcessing(false);
     }
-  }, []);
+  }, [settings.stylePreset, selectedTemplate]);
 
   const handleConfirmPrompt = useCallback(async (promptToUse: string) => {
     if (!promptToUse) return;
@@ -189,6 +189,24 @@ function App() {
           </div>
         </header>
 
+        {/* Global Progress Bar */}
+        <AnimatePresence>
+          {isProcessing && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 4 }}
+              exit={{ opacity: 0, height: 0 }}
+              className="w-full bg-blue-900/20 overflow-hidden relative z-50"
+            >
+              <motion.div
+                className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-500 to-transparent w-[50%]"
+                animate={{ x: ["-100%", "200%"] }}
+                transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Scrollable Content Area */}
         <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
           <div className="max-w-7xl mx-auto p-8 pb-32 space-y-12">
@@ -276,6 +294,22 @@ function App() {
                 <span className="text-slate-500 text-sm font-medium uppercase tracking-wider">Quick Start & Templates</span>
                 <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-800 to-transparent" />
               </div>
+
+              {/* Instructions */}
+              <div className="bg-blue-500/5 border border-blue-500/10 rounded-xl p-4 mb-6 flex gap-3 items-start">
+                <div className="p-2 bg-blue-500/10 rounded-lg shrink-0">
+                  <Sparkles className="w-4 h-4 text-blue-400" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-blue-200 mb-1">How to use Dynamic Templates</h3>
+                  <p className="text-xs text-blue-200/60 leading-relaxed">
+                    1. <strong>Select a template</strong> below (e.g., "Campaign Launch").<br />
+                    2. <strong>Upload your document</strong> or image.<br />
+                    3. The AI will analyze your file and generate a custom prompt matching the selected style.
+                  </p>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {quickPrompts.map((item, index) => {
                   const isSelected = selectedTemplate === item.template;
@@ -286,6 +320,12 @@ function App() {
                         if (item.template) {
                           // Toggle selection
                           setSelectedTemplate(prev => prev === item.template ? null : (item.template ?? null));
+
+                          // Also update the style preset if one is associated
+                          if (item.stylePresetId) {
+                            setSettings(prev => ({ ...prev, stylePreset: item.stylePresetId! }));
+                          }
+
                           // If no file is uploaded yet, we can also populate the input as a preview
                           if (!isProcessing) {
                             setInputInternal(item.prompt);
