@@ -1,5 +1,17 @@
 # Deployment Guide
 
+## Environment Variables (required)
+
+The Gemini API key is server-side only — the client calls the `/api/gemini`
+serverless proxy, which reads `GEMINI_API_KEY`:
+
+- **Vercel**: Project → Settings → Environment Variables → add `GEMINI_API_KEY`.
+- **Local**: put `GEMINI_API_KEY=...` in `.env` and run `vercel dev` (plain
+  `npm run dev` serves the UI but not the `/api` functions).
+
+Do NOT use a `VITE_`-prefixed name for the key — Vite inlines those values into
+the public client bundle where anyone can extract them.
+
 ## Option 1: Vercel (Recommended)
 
 Vercel is the creators of Next.js and provides excellent support for Vite apps.
