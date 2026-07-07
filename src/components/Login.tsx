@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Lock, User, ArrowRight, ShieldCheck } from 'lucide-react';
+import { storeAuthToken } from '../lib/authToken';
 
 interface LoginProps {
     onLogin: (success: boolean) => void;
@@ -9,28 +10,39 @@ interface LoginProps {
 export const Login: React.FC<LoginProps> = ({ onLogin }) => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
-    const [error, setError] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
-    const handleLogin = (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
-        setError(false);
+        setError(null);
 
-        // Simulate network delay for effect
-        setTimeout(() => {
-            // Hardcoded credentials for demo purposes
-            // In a real app, these would be validated against a backend
-            const validUser = import.meta.env.VITE_APP_USERNAME || 'Testing';
-            const validPass = import.meta.env.VITE_APP_PASSWORD || 'Appleqwerty123';
+        try {
+            const response = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            const json = (await response.json().catch(() => ({}))) as { token?: string; error?: string };
 
-            if (username === validUser && password === validPass) {
-                onLogin(true);
-            } else {
-                setError(true);
+            if (response.status === 404) {
+                setError('Login service not found — run `vercel dev` so the /api routes are served.');
                 setIsLoading(false);
+                return;
             }
-        }, 800);
+            if (!response.ok || typeof json.token !== 'string') {
+                setError(json.error ?? 'Invalid credentials. Please try again.');
+                setIsLoading(false);
+                return;
+            }
+
+            storeAuthToken(json.token);
+            onLogin(true);
+        } catch {
+            setError('Could not reach the login service. Please try again.');
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -98,7 +110,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                                     animate={{ opacity: 1, y: 0 }}
                                     className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs text-center font-medium"
                                 >
-                                    Invalid credentials. Please try again.
+                                    {error}
                                 </motion.div>
                             )}
 

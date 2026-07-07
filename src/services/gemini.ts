@@ -1,4 +1,5 @@
 import type { GenerationSettings } from '../components/ControlPanel';
+import { authToken } from '../lib/authToken';
 import { stylePresets } from '../lib/stylePresetLibrary';
 
 export interface GeminiResponse {
@@ -8,6 +9,10 @@ export interface GeminiResponse {
 // All Gemini requests go through the serverless proxy in api/gemini.ts so the
 // API key stays server-side and never ships in the client bundle.
 const GEMINI_PROXY_URL = '/api/gemini';
+
+// Base64 encoding inflates uploads by ~4/3 and the whole JSON body must stay
+// under Vercel's 4.5 MB serverless request limit
+export const MAX_UPLOAD_BYTES = 3 * 1024 * 1024;
 
 interface GeminiContent {
     parts: Array<{ text: string } | { inlineData: { data: string; mimeType: string } }>;
@@ -43,9 +48,16 @@ const fileToGenerativePart = async (file: File): Promise<{ inlineData: { data: s
 const callGemini = async (model: string, contents: GeminiContent[], errorLabel: string): Promise<GenerateContentResponse> => {
     const response = await fetch(GEMINI_PROXY_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${authToken() ?? ''}`
+        },
         body: JSON.stringify({ model, contents })
     });
+
+    if (response.status === 401) {
+        throw new Error('Your session has expired — sign out and log in again.');
+    }
 
     if (!response.ok) {
         const errorText = await response.text();
@@ -57,6 +69,11 @@ const callGemini = async (model: string, contents: GeminiContent[], errorLabel: 
 
 export const analyzeDocument = async (file: File, stylePreset?: string, template?: string): Promise<GeminiResponse> => {
     console.log("Analyzing file:", file.name, "with style:", stylePreset);
+
+    if (file.size > MAX_UPLOAD_BYTES) {
+        const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+        throw new Error(`"${file.name}" is ${sizeMB} MB — files must be under 3 MB to analyze.`);
+    }
 
     try {
         const filePart = await fileToGenerativePart(file);

@@ -3,6 +3,7 @@ import { useDropzone } from 'react-dropzone';
 import { Upload, FileText, Loader2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { MAX_UPLOAD_BYTES } from '../services/gemini';
 
 interface DragDropZoneProps {
     onFileSelect: (file: File) => void;
@@ -16,7 +17,7 @@ export const DragDropZone: React.FC<DragDropZoneProps> = ({ onFileSelect, isProc
         }
     }, [onFileSelect]);
 
-    const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    const { getRootProps, getInputProps, isDragActive, fileRejections } = useDropzone({
         onDrop,
         accept: {
             'text/plain': ['.txt', '.md'],
@@ -27,9 +28,18 @@ export const DragDropZone: React.FC<DragDropZoneProps> = ({ onFileSelect, isProc
             'image/jpeg': ['.jpg', '.jpeg'],
             'image/webp': ['.webp']
         },
+        // The file travels base64-encoded through the /api/gemini proxy, whose
+        // request body must stay under Vercel's 4.5 MB serverless limit
+        maxSize: MAX_UPLOAD_BYTES,
         multiple: false,
         disabled: isProcessing
     });
+
+    const rejectionMessage = fileRejections.length > 0
+        ? (fileRejections[0].errors[0]?.code === 'file-too-large'
+            ? 'That file is too large — the limit is 3 MB.'
+            : 'That file type is not supported.')
+        : null;
 
     return (
         <div
@@ -77,8 +87,13 @@ export const DragDropZone: React.FC<DragDropZoneProps> = ({ onFileSelect, isProc
                                 {isDragActive ? "Drop your file here" : "Drag & drop your document"}
                             </p>
                             <p className="text-sm text-slate-500 mt-1">
-                                or click to browse
+                                or click to browse · up to 3 MB
                             </p>
+                            {rejectionMessage && (
+                                <p className="text-xs text-red-400 mt-2 font-medium">
+                                    {rejectionMessage}
+                                </p>
+                            )}
                         </div>
                     </motion.div>
                 )}
