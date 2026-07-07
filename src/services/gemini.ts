@@ -1,8 +1,29 @@
 import type { GenerationSettings } from '../components/ControlPanel';
+import { authToken } from '../lib/authToken';
 import { stylePresets } from '../lib/stylePresetLibrary';
 
 export interface GeminiResponse {
     prompt: string;
+}
+
+// All Gemini requests go through the serverless proxy in api/gemini.ts so the
+// API key stays server-side and never ships in the client bundle.
+const GEMINI_PROXY_URL = '/api/gemini';
+
+// Base64 encoding inflates uploads by ~4/3 and the whole JSON body must stay
+// under Vercel's 4.5 MB serverless request limit
+export const MAX_UPLOAD_BYTES = 3 * 1024 * 1024;
+
+interface GeminiContent {
+    parts: Array<{ text: string } | { inlineData: { data: string; mimeType: string } }>;
+}
+
+interface GenerateContentResponse {
+    candidates?: Array<{
+        content?: {
+            parts?: Array<{ text?: string; inlineData?: { mimeType: string; data: string } }>;
+        };
+    }>;
 }
 
 const fileToGenerativePart = async (file: File): Promise<{ inlineData: { data: string; mimeType: string } }> => {
@@ -24,15 +45,35 @@ const fileToGenerativePart = async (file: File): Promise<{ inlineData: { data: s
     });
 };
 
+const callGemini = async (model: string, contents: GeminiContent[], errorLabel: string): Promise<GenerateContentResponse> => {
+    const response = await fetch(GEMINI_PROXY_URL, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${authToken() ?? ''}`
+        },
+        body: JSON.stringify({ model, contents })
+    });
+
+    if (response.status === 401) {
+        throw new Error('Your session has expired — sign out and log in again.');
+    }
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`${errorLabel}: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+
+    return response.json() as Promise<GenerateContentResponse>;
+};
+
 export const analyzeDocument = async (file: File, stylePreset?: string, template?: string): Promise<GeminiResponse> => {
-    const apiKey = import.meta.env.VITE_NANO_BANANA_PRO_API_KEY;
-    if (!apiKey) throw new Error("API key is missing");
-
-    // Use gemini-3-pro-preview for the latest and greatest capabilities
-    const model = "gemini-3-pro-preview";
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-
     console.log("Analyzing file:", file.name, "with style:", stylePreset);
+
+    if (file.size > MAX_UPLOAD_BYTES) {
+        const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+        throw new Error(`"${file.name}" is ${sizeMB} MB — files must be under 3 MB to analyze.`);
+    }
 
     try {
         const filePart = await fileToGenerativePart(file);
@@ -57,7 +98,7 @@ export const analyzeDocument = async (file: File, stylePreset?: string, template
             **Target Template:**
             The user wants to generate an image based on this specific template structure:
             "${template}"
-            
+
             **INSTRUCTION:**
             1. Analyze the document/image to find values for the placeholders (e.g., {{Subject}}, {{Setting}}) in the template.
             2. If a specific value is not found, infer a suitable professional detail based on the context.
@@ -72,7 +113,7 @@ export const analyzeDocument = async (file: File, stylePreset?: string, template
             ${styleContext}
             ${templateContext}
             Create a detailed, high-quality image generation prompt that visually represents the core concepts, themes, and key information in this file.
-            
+
             ${!template ? `
             **Prompt Structure:**
             1. **Subject:** Clearly define the main subject.
@@ -81,35 +122,19 @@ export const analyzeDocument = async (file: File, stylePreset?: string, template
             4. **Style:** (e.g., Photorealistic, Cinematic, 3D Render, Vector Art).
             5. **Technical Specs:** Lighting (e.g., golden hour, studio), Camera (e.g., 50mm, f/1.8), and Resolution (e.g., 8k, UHD).
             ` : ''}
-            
+
             **Guidelines:**
             - Use natural language and full sentences.
             - Be specific and descriptive.
             - Focus on visual elements, not abstract concepts.
             - Do not summarize the document text; translate it into a visual description.
-            
+
             Output ONLY the prompt text.
         `;
 
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{
-                    parts: [
-                        { text: promptText },
-                        filePart
-                    ]
-                }]
-            })
-        });
+        // Use gemini-3-pro-preview for the latest and greatest capabilities
+        const json = await callGemini("gemini-3-pro-preview", [{ parts: [{ text: promptText }, filePart] }], "Analysis failed");
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Analysis failed: ${response.status} ${response.statusText} - ${errorText}`);
-        }
-
-        const json = await response.json();
         const generatedText = json.candidates?.[0]?.content?.parts?.[0]?.text;
 
         if (!generatedText) throw new Error("No text generated from analysis");
@@ -123,15 +148,6 @@ export const analyzeDocument = async (file: File, stylePreset?: string, template
 };
 
 export const generateImage = async (prompt: string, settings?: GenerationSettings): Promise<string> => {
-    const apiKey = import.meta.env.VITE_NANO_BANANA_PRO_API_KEY;
-
-    if (!apiKey) {
-        console.error("VITE_NANO_BANANA_PRO_API_KEY is missing!");
-        throw new Error("API key is missing");
-    }
-
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/nano-banana-pro-preview:generateContent?key=${apiKey}`;
-
     // Construct the prompt with settings if available
     // Enforce professional quality standards
     const qualityKeywords = "professional, enterprise-grade, marketing department quality, high-end, polished, sophisticated, 8k resolution, highly detailed, commercial photography";
@@ -158,29 +174,10 @@ export const generateImage = async (prompt: string, settings?: GenerationSetting
     }
 
     try {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                contents: [{
-                    parts: [{
-                        text: fullPrompt
-                    }]
-                }]
-            })
-        });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`API request failed: ${response.status} ${response.statusText} - ${errorText}`);
-        }
-
-        const json = await response.json();
+        const json = await callGemini("nano-banana-pro-preview", [{ parts: [{ text: fullPrompt }] }], "API request failed");
 
         if (json.candidates && json.candidates[0]?.content?.parts) {
-            const part = json.candidates[0].content.parts.find((p: any) => p.inlineData);
+            const part = json.candidates[0].content.parts.find((p) => p.inlineData);
             if (part && part.inlineData) {
                 return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
             }

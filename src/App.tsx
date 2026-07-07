@@ -5,12 +5,13 @@ import { ImageGenerator } from './components/ImageGenerator';
 import { Login } from './components/Login';
 import { ControlPanel, type GenerationSettings } from './components/ControlPanel';
 import { analyzeDocument, generateImage } from './services/gemini';
+import { clearAuthToken, hasValidAuthToken } from './lib/authToken';
 import { Sparkles, Settings2, Loader2, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { quickPrompts } from './lib/promptLibrary';
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(hasValidAuthToken);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -180,7 +181,10 @@ function App() {
               <span className="text-xs font-medium text-slate-300">System Online</span>
             </div>
             <button
-              onClick={() => setIsAuthenticated(false)}
+              onClick={() => {
+                clearAuthToken();
+                setIsAuthenticated(false);
+              }}
               className="p-2 rounded-full hover:bg-white/5 text-slate-400 hover:text-white transition-colors"
               title="Sign Out"
             >
